@@ -1,0 +1,60 @@
+@baseUrl = http://localhost:8080
+@json = application/json
+
+### 1) Health check (nếu có actuator thì đổi endpoint)
+GET {{baseUrl}}/
+
+### 2) Login user 1 (Ryo)
+POST {{baseUrl}}/auth/login
+Content-Type: {{json}}
+
+{
+  "username": "ryo",
+  "displayName": "Ryo"
+}
+
+### 3) Login user 2 (Alice)
+POST {{baseUrl}}/auth/login
+Content-Type: {{json}}
+
+{
+  "username": "alice",
+  "displayName": "Alice"
+}
+
+### 4) Tạo conversation DIRECT (creatorId=1, memberIds=[2])
+POST {{baseUrl}}/conversations
+Content-Type: {{json}}
+
+{
+  "creatorId": 1,
+  "type": "DIRECT",
+  "title": "Ryo-Alice",
+  "memberIds": [2]
+}
+
+### 5) Lấy danh sách conversation của user 1
+GET {{baseUrl}}/conversations?userId=1
+
+### 6) Gửi message từ user 1 vào conversation 1
+POST {{baseUrl}}/conversations/1/messages
+Content-Type: {{json}}
+
+{
+  "senderId": 1,
+  "text": "Hello Alice",
+  "clientMsgId": "msg-001"
+}
+
+### 7) Gửi message từ user 2 vào conversation 1
+POST {{baseUrl}}/conversations/1/messages
+Content-Type: {{json}}
+
+{
+  "senderId": 2,
+  "text": "Hi Ryo",
+  "clientMsgId": "msg-002"
+}
+
+### 8) Lấy lịch sử message conversation 1
+GET {{baseUrl}}/conversations/1/messages

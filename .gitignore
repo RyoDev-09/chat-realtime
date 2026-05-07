@@ -1,0 +1,37 @@
+# ========================
+# Java / Spring Boot
+# ========================
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/*.class
+backend/HELP.md
+backend/.idea/
+backend/*.iws
+backend/*.iml
+backend/*.ipr
+backend/.vscode/
+
+# ========================
+# Sensitive Config (IMPORTANT - never commit credentials!)
+# ========================
+backend/src/main/resources/application-dev.properties
+backend/src/main/resources/application-prod.properties
+
+# ========================
+# Node.js / Frontend
+# ========================
+frontend/node_modules/
+frontend/dist/
+frontend/.vscode/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ========================
+# OS / Editor
+# ========================
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
