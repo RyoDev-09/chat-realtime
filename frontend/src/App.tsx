@@ -39,6 +39,7 @@ function ChatScreen({ auth, onLogout }: { auth: AuthData; onLogout: ()=>void }) 
   const fetchingRef = useRef(false)
   const wsRef = useRef<Client|null>(null)
   const msgsRef = useRef<HTMLDivElement|null>(null)
+  const selectedIdRef = useRef<number|null>(selectedId)
   const scrollToBottom = (smooth=false) => requestAnimationFrame(()=>msgsRef.current?.scrollTo({top:msgsRef.current.scrollHeight,behavior:smooth?'smooth':'auto'}))
 
   const loadUsers=async()=>{setUsersLoading(true);setUsersError('');try{const r=await fetch(`${API_BASE}/users?excludeUserId=${auth.userId}`,{headers:authHeaders()});const j:ApiResp<UserListItem[]>=await r.json();if(!j.success){setUsersError(j.message||'Không tải được danh sách users');setUsers([]);return;}setUsers(j.data||[]);}catch{setUsersError('Không kết nối được backend để tải users');setUsers([]);}finally{setUsersLoading(false)}}
@@ -85,7 +86,7 @@ function ChatScreen({ auth, onLogout }: { auth: AuthData; onLogout: ()=>void }) 
 
   useEffect(()=>{loadUsers();loadConversations()},[])
   useEffect(()=>{if(conversations.length) resolveDirectNames(conversations)},[conversations])
-  useEffect(()=>{if(selectedId) localStorage.setItem('chat_selected_conversation_id', String(selectedId)); else localStorage.removeItem('chat_selected_conversation_id')},[selectedId])
+  useEffect(()=>{selectedIdRef.current=selectedId;if(selectedId) localStorage.setItem('chat_selected_conversation_id', String(selectedId)); else localStorage.removeItem('chat_selected_conversation_id')},[selectedId])
   useEffect(()=>{localStorage.setItem('chat_direct_names', JSON.stringify(directNameByConversationId||{}))},[directNameByConversationId])
   useEffect(()=>{if(selectedId){setMessages([]);fetchMessages(selectedId).then(()=>scrollToBottom(false));markRead(selectedId)}},[selectedId])
   useEffect(()=>{if(selectedId&&messages.length)scrollToBottom(true)},[selectedId,messages.length])
@@ -113,7 +114,7 @@ function ChatScreen({ auth, onLogout }: { auth: AuthData; onLogout: ()=>void }) 
         // Local update is instant; throttled loadConversations reconciles DB truth.
         try {
           const incoming: Message = JSON.parse(msg.body)
-          if(incoming.conversationId !== selectedId) {
+          if(incoming.conversationId !== selectedIdRef.current) {
             setConversations(prev=>prev.map(c=>c.id===incoming.conversationId?{...c,unreadCount:(c.unreadCount||0)+1,lastMessageAt:incoming.createdAt||new Date().toISOString()}:c).sort((a,b)=>new Date(b.lastMessageAt||0).getTime()-new Date(a.lastMessageAt||0).getTime()))
           }
           const now = Date.now()
@@ -128,6 +129,9 @@ function ChatScreen({ auth, onLogout }: { auth: AuthData; onLogout: ()=>void }) 
         // Duplicate guard is required because polling fallback can fetch the same message.
         try {
           const incoming: Message = JSON.parse(msg.body)
+          // Guard against stale subscriptions/list-topic leakage: never render a message
+          // unless it belongs to the conversation currently open on screen.
+          if (incoming.conversationId !== selectedIdRef.current) return
           setMessages(prev=>{
             if(prev.some(x=>x.id===incoming.id)) return prev
             const next = [...prev, incoming].sort((a,b)=>a.id-b.id)
@@ -135,7 +139,7 @@ function ChatScreen({ auth, onLogout }: { auth: AuthData; onLogout: ()=>void }) 
             return next
           })
           if (incoming.senderId !== auth.userId) {
-            if (document.visibilityState==='visible') markRead(selectedId)
+            if (document.visibilityState==='visible' && selectedIdRef.current) markRead(selectedIdRef.current)
             const now = Date.now()
             if (now - convoReloadTsRef.current > 1200) {
               convoReloadTsRef.current = now
