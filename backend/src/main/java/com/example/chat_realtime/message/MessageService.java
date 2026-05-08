@@ -9,6 +9,7 @@ import com.example.chat_realtime.conversation.ConversationMemberRepository;
 import com.example.chat_realtime.conversation.ConversationReadState;
 import com.example.chat_realtime.conversation.ConversationReadStateRepository;
 import com.example.chat_realtime.conversation.ConversationRepository;
+import com.example.chat_realtime.common.ForbiddenException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,7 +29,7 @@ public class MessageService {
         // 1) authorize sender membership, 2) persist message with monotonic seq,
         // 3) update conversation ordering timestamp, 4) push realtime events.
         memberRepository.findByConversationIdAndUserIdAndIsActiveTrue(conversationId, senderId)
-                .orElseThrow(() -> new RuntimeException("sender is not a member of conversation"));
+                .orElseThrow(() -> new ForbiddenException("sender is not a member of conversation"));
 
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("text is required");
@@ -66,15 +67,19 @@ public class MessageService {
         return saved;
     }
 
-    public List<Message> list(Long conversationId) {
+    public List<Message> list(Long conversationId, Long userId) {
+        memberRepository.findByConversationIdAndUserIdAndIsActiveTrue(conversationId, userId)
+                .orElseThrow(() -> new ForbiddenException("user is not a member of conversation"));
         return messageRepository.findTop50ByConversationIdOrderByIdDesc(conversationId).stream()
                 .sorted((a, b) -> Long.compare(a.getId(), b.getId()))
                 .toList();
     }
 
-    public List<Message> listSince(Long conversationId, Long cursorId) {
+    public List<Message> listSince(Long conversationId, Long cursorId, Long userId) {
+        memberRepository.findByConversationIdAndUserIdAndIsActiveTrue(conversationId, userId)
+                .orElseThrow(() -> new ForbiddenException("user is not a member of conversation"));
         if (cursorId == null || cursorId <= 0) {
-            return list(conversationId);
+            return list(conversationId, userId);
         }
         return messageRepository.findTop50ByConversationIdAndIdGreaterThanOrderByIdAsc(conversationId, cursorId);
     }
@@ -83,7 +88,7 @@ public class MessageService {
         // Read-state flow: when the user opens a conversation, mark it read up to the newest
         // message currently stored. Conversation list unread count is then recalculated from DB.
         memberRepository.findByConversationIdAndUserIdAndIsActiveTrue(conversationId, userId)
-                .orElseThrow(() -> new RuntimeException("user is not a member of conversation"));
+                .orElseThrow(() -> new ForbiddenException("user is not a member of conversation"));
 
         Message last = messageRepository.findTop50ByConversationIdOrderByIdDesc(conversationId).stream().findFirst().orElse(null);
         if (last == null) return;

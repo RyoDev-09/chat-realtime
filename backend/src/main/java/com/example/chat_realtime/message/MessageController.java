@@ -40,11 +40,14 @@ public class MessageController {
     @GetMapping
     public ApiResponse<List<Message>> list(
             @PathVariable Long conversationId,
-            @RequestParam(required = false) Long cursorId) {
+            @RequestParam(required = false) Long cursorId,
+            HttpServletRequest request) {
+        Long authUserId = authUserResolver.resolveUserId(request);
+        if (authUserId == null) throw new UnauthorizedException("unauthorized");
         if (cursorId == null) {
-            return ApiResponse.ok(messageService.list(conversationId));
+            return ApiResponse.ok(messageService.list(conversationId, authUserId));
         }
-        return ApiResponse.ok(messageService.listSince(conversationId, cursorId));
+        return ApiResponse.ok(messageService.listSince(conversationId, cursorId, authUserId));
     }
 
     @PostMapping("/mark-read")

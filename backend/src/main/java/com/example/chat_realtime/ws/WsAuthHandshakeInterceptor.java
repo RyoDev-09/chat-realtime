@@ -1,5 +1,7 @@
 package com.example.chat_realtime.ws;
 
+import com.example.chat_realtime.auth.JwtService;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.server.ServerHttpRequest;
@@ -9,15 +11,17 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
+@RequiredArgsConstructor
 public class WsAuthHandshakeInterceptor implements HandshakeInterceptor {
     private static final Logger log = LoggerFactory.getLogger(WsAuthHandshakeInterceptor.class);
     private static final AtomicLong wsConnectCounter = new AtomicLong(0);
+    private final JwtService jwtService;
+
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler wsHandler,
                                    Map<String, Object> attributes) {
@@ -52,10 +56,8 @@ public class WsAuthHandshakeInterceptor implements HandshakeInterceptor {
         auth = auth.trim();
         if (!auth.startsWith("Bearer ")) return null;
         String token = auth.substring("Bearer ".length()).trim();
-        String prefix = "dev-token-user-";
-        if (!token.startsWith(prefix)) return null;
         try {
-            return Long.parseLong(token.substring(prefix.length()));
+            return jwtService.parseUserId(token);
         } catch (Exception e) {
             return null;
         }

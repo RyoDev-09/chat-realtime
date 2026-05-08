@@ -1,5 +1,6 @@
 package com.example.chat_realtime.ws;
 
+import com.example.chat_realtime.auth.JwtService;
 import com.example.chat_realtime.conversation.ConversationMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -20,6 +21,7 @@ public class WsSubscriptionAuthInterceptor implements ChannelInterceptor {
     private static final Logger log = LoggerFactory.getLogger(WsSubscriptionAuthInterceptor.class);
     private static final AtomicLong rejectCounter = new AtomicLong(0);
     private final ConversationMemberRepository memberRepository;
+    private final JwtService jwtService;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -94,10 +96,8 @@ public class WsSubscriptionAuthInterceptor implements ChannelInterceptor {
         auth = auth.trim();
         if (!auth.startsWith("Bearer ")) return null;
         String token = auth.substring("Bearer ".length()).trim();
-        String prefix = "dev-token-user-";
-        if (!token.startsWith(prefix)) return null;
         try {
-            return Long.parseLong(token.substring(prefix.length()));
+            return jwtService.parseUserId(token);
         } catch (Exception e) {
             return null;
         }
