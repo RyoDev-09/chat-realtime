@@ -1,5 +1,6 @@
 package com.example.chat_realtime.ws;
 
+import com.example.chat_realtime.auth.JwtService;
 import com.example.chat_realtime.conversation.ConversationMemberRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,18 +19,20 @@ import static org.mockito.Mockito.*;
 
 class WsSubscriptionAuthInterceptorTest {
     private ConversationMemberRepository repo;
+    private JwtService jwtService;
     private WsSubscriptionAuthInterceptor interceptor;
 
     @BeforeEach
     void setUp() {
         repo = mock(ConversationMemberRepository.class);
-        interceptor = new WsSubscriptionAuthInterceptor(repo);
+        jwtService = new JwtService("test-secret-change-me-test-secret-32-bytes", 86400);
+        interceptor = new WsSubscriptionAuthInterceptor(repo, jwtService);
     }
 
     @Test
     void connectShouldExtractUserFromAuthorizationHeader() {
         StompHeaderAccessor acc = StompHeaderAccessor.create(StompCommand.CONNECT);
-        acc.addNativeHeader("Authorization", "Bearer dev-token-user-77");
+        acc.addNativeHeader("Authorization", "Bearer " + jwtService.issue(77L, "tester"));
         acc.setSessionAttributes(new HashMap<>());
         Message<byte[]> msg = MessageBuilder.createMessage(new byte[0], acc.getMessageHeaders());
 
